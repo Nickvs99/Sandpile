@@ -1,5 +1,6 @@
 import copy
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 import random
 
@@ -56,11 +57,13 @@ class Sandpile_model:
             for j in range(self.grid_size):
                 self.grid_3D[i].append([])
 
-
     def run(self):
 
         while self.current_step < self.n_steps:
             self.update()
+
+            if self.current_step % 1000 == 0:
+                print(self.current_step)
 
     def update(self):
         
@@ -193,10 +196,33 @@ class Sandpile_model:
             
         return neighbours, real
 
+    def plot_time_series(self):
+
+        avalanche_sizes = np.array(self.data)
+
+        max_avalanche_size = np.amax(avalanche_sizes)
+
+        # Normalize the avalanche sizes
+        avalanche_sizes = avalanche_sizes / max_avalanche_size
+
+        ts = np.arange(self.n_steps)
+        plt.vlines(ts, 0, avalanche_sizes)
+
+        plt.xlabel("t")
+        plt.ylabel(r"$s/s_{max}$")
+
+        plt.xlim(0, self.n_steps)
+        plt.ylim(0,1)
+
+        plt.show()
+
+
 if __name__ == "__main__":
 
-    model = Sandpile_model(grid_size=5, n_steps=100, crit_values=[1, 3])
+    model = Sandpile_model(grid_size=10, n_steps=1000, crit_values=[1, 3])
     model.run()
 
     print(model.grid_3D)
     print(model.height_grid)
+
+    model.plot_time_series()
