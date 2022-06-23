@@ -1,8 +1,9 @@
 import copy
 import math
-import matplotlib.pyplot as plt
 import numpy as np
 import random
+
+from plots import plot_time_series, plot_size_probability
 
 class Sandpile_model:
 
@@ -74,17 +75,10 @@ class Sandpile_model:
         neighbour_heights, is_inside = self.get_neighbours(self.height_grid, [i, j])
         
         grain_type = self.grid_3D[i][j][-1]
-        # avalanche_steps = 0
 
         # Check whether an avalanche should occur
         if self.height_grid[i][j] - min(neighbour_heights) >= self.crit_values[grain_type] and self.height_grid[i][j] >= 4:
-            # avalanche_steps += 1
 
-            # avalanche += 1
-
-            # add to surrounding area
-            # order = [-1, -2, -3, -4]
-            # random.shuffle(order)
             top_grains = self.grid_3D[i][j][-4:]
             random.shuffle(top_grains)
             next_coords = [(i, j)]
@@ -113,8 +107,6 @@ class Sandpile_model:
                 for k in range(4):
                     self.grid_3D[i][j].pop()
 
-            # for i2, j2 in next_coords:
-            #     avalanche_steps += self.avalanche_recursive(i2, j2)
             return next_coords
 
         return None
@@ -135,7 +127,7 @@ class Sandpile_model:
             new_step = self.avalanche_step(next_pos[0], next_pos[1])
             if new_step != None:
                 avalanche_size += 1
-                # print(new_step)
+
                 avalanche_queue.extend(new_step)
 
         self.data[self.current_step] = avalanche_size
@@ -211,27 +203,17 @@ class Sandpile_model:
             
         return neighbours, real
 
-    def plot_time_series(self):
-
+    def collect_time_series_data(self):
+        
+        ts = np.arange(self.n_steps)
+        
         avalanche_sizes = np.array(self.data)
-
         max_avalanche_size = np.amax(avalanche_sizes)
 
         # Normalize the avalanche sizes
-        avalanche_sizes = avalanche_sizes / max_avalanche_size
+        return ts, avalanche_sizes / max_avalanche_size
 
-        ts = np.arange(self.n_steps)
-        plt.vlines(ts, 0, avalanche_sizes)
-
-        plt.xlabel("t")
-        plt.ylabel(r"$s/s_{max}$")
-
-        plt.xlim(0, self.n_steps)
-        plt.ylim(0,1)
-
-        plt.show()
-    
-    def plot_size_probability(self, n_bins=20):
+    def collect_size_probability_data(self, n_bins=20):
 
         avalanche_sizes = np.array(self.data)
         avalanche_sizes = avalanche_sizes[avalanche_sizes != 0]
@@ -245,24 +227,24 @@ class Sandpile_model:
 
         bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
 
-        plt.plot(bin_centers, hist)
+        return bin_centers, hist
 
-        plt.xscale('log')
-        plt.yscale('log')
+    def plot_time_series(self):
+
+        ts, time_series_data = self.collect_time_series_data()
+
+        plot_time_series([(ts, time_series_data)])
+
+    def plot_size_probability(self, n_bins=20):
+
+        bin_centers, hist = self.collect_size_probability_data(n_bins=n_bins)
         
-        plt.xlabel("s")
-        plt.ylabel("P(s;L)")
-
-        plt.show()
-
+        plot_size_probability([(bin_centers, hist)])
 
 if __name__ == "__main__":
 
-    model = Sandpile_model(grid_size=30, n_steps=10000, crit_values=[4, 4], n_grain_types=2)
+    model = Sandpile_model(grid_size=30, n_steps=10000, crit_values=[2, 4], n_grain_types=2)
     model.run()
 
-    print(model.grid_3D)
-    print(model.height_grid)
-
-    # model.plot_time_series()
+    model.plot_time_series()
     model.plot_size_probability()
