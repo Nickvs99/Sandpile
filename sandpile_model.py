@@ -63,7 +63,7 @@ class Sandpile_model:
             self.update()
 
             if self.current_step % 1000 == 0:
-                print(self.current_step)
+                print(f"Step {self.current_step} of {self.n_steps}", end="\r")
 
     def update(self):
         
@@ -215,14 +215,39 @@ class Sandpile_model:
         plt.ylim(0,1)
 
         plt.show()
+    
+    def plot_size_probability(self, n_bins=20):
+
+        avalanche_sizes = np.array(self.data)
+        avalanche_sizes = avalanche_sizes[avalanche_sizes != 0]
+
+        min_avalanche_size = np.amin(avalanche_sizes)
+        max_avalanche_size = np.amax(avalanche_sizes)
+
+        # Since the x scale is logaritmic the bins also have to be logaritmic
+        bins = np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins)
+        hist, bin_edges = np.histogram(avalanche_sizes, bins=bins, density=True)
+
+        bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
+
+        plt.plot(bin_centers, hist)
+
+        plt.xscale('log')
+        plt.yscale('log')
+        
+        plt.xlabel("s")
+        plt.ylabel("P(s;L)")
+
+        plt.show()
 
 
 if __name__ == "__main__":
 
-    model = Sandpile_model(grid_size=10, n_steps=1000, crit_values=[1, 3])
+    model = Sandpile_model(grid_size=20, n_steps=100000, crit_values=[2, 4], n_grain_types=2)
     model.run()
 
     print(model.grid_3D)
     print(model.height_grid)
 
-    model.plot_time_series()
+    # model.plot_time_series()
+    model.plot_size_probability()
