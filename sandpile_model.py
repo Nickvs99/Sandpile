@@ -65,67 +65,80 @@ class Sandpile_model:
             if self.current_step % 1000 == 0:
                 print(f"Step {self.current_step} of {self.n_steps}", end="\r")
 
+    def avalanche_step(self, i, j):
+        # Check if a grain is present at location i,j
+        if len(self.grid_3D[i][j]) == 0:
+            return None
+        
+        # Get neighbour heights and whether they exist
+        neighbour_heights, is_inside = self.get_neighbours(self.height_grid, [i, j])
+        
+        grain_type = self.grid_3D[i][j][-1]
+        # avalanche_steps = 0
+
+        # Check whether an avalanche should occur
+        if self.height_grid[i][j] - min(neighbour_heights) >= self.crit_values[grain_type] and self.height_grid[i][j] >= 4:
+            # avalanche_steps += 1
+
+            # avalanche += 1
+
+            # add to surrounding area
+            # order = [-1, -2, -3, -4]
+            # random.shuffle(order)
+            top_grains = self.grid_3D[i][j][-4:]
+            random.shuffle(top_grains)
+            next_coords = [(i, j)]
+            
+            itter = 0
+            for adj in range(-1, 2, 2):
+                if is_inside[itter] == 1:
+                    self.height_grid[i + adj][j] += 1
+                    self.grid_3D[i + adj][j].append(top_grains[itter])
+                    next_coords.append((i + adj, j))
+                itter += 1
+
+                if is_inside[itter] == 1:
+                    self.height_grid[i][j + adj] += 1
+                    self.grid_3D[i][j + adj].append(top_grains[itter])
+                    next_coords.append((i, j + adj))
+                itter += 1
+
+            # implement the boundary condition and lower the pile at critical value
+            if self.boundary_con:
+                self.height_grid[i][j] -= sum(is_inside)
+                for k in range(sum(is_inside)):
+                    self.grid_3D[i][j].pop()
+            else:
+                self.height_grid[i][j] -= 4
+                for k in range(4):
+                    self.grid_3D[i][j].pop()
+
+            # for i2, j2 in next_coords:
+            #     avalanche_steps += self.avalanche_recursive(i2, j2)
+            return next_coords
+
+        return None
+
     def update(self):
         
-        self.add_grain()
+        new_grain_pos = self.add_grain()
 
         # update the model simultaneously
         avalanche = 0
         control = 0
-        
-        while True:
-            
-            height_grid_copy = copy.deepcopy(self.height_grid)
-    
-            for i in range(0, len(self.height_grid)):
-                for j in range(0, len(self.height_grid[0])):
-                    
-                    # Check if a grain is present at location i,j
-                    if len(self.grid_3D[i][j]) == 0:
-                        continue
-                    
-                    # Get neighbour heights and wheter they exist
-                    neighbour_heights, real = self.get_neighbours(height_grid_copy, [i, j])
-                    
-                    grain_type = self.grid_3D[i][j][-1]
 
-                    # Check wheter an avalanche should occur
-                    if self.height_grid[i][j] - min(neighbour_heights) >= self.crit_values[grain_type] and height_grid_copy[i][j] >= 4:
-                        
-                        avalanche += 1
+        avalanche_queue = [new_grain_pos]
+        avalanche_size = 0
 
-                        # add to surrounding area
-                        order = [-1, -2, -3, -4]
-                        random.shuffle(order)
-                        
-                        itter = 0
-                        for adj in range(-1, 2, 2):
-                            if real[itter] == 1:
-                                self.height_grid[i+ adj][j] += 1
-                                self.grid_3D[i+ adj][j].append(self.grid_3D[i][j][order[itter]])
-                            itter += 1
+        while len(avalanche_queue) > 0:
+            next_pos = avalanche_queue.pop()
+            new_step = self.avalanche_step(next_pos[0], next_pos[1])
+            if new_step != None:
+                avalanche_size += 1
+                # print(new_step)
+                avalanche_queue.extend(new_step)
 
-                            if real[itter] == 1:
-                                self.height_grid[i][j + adj] += 1
-                                self.grid_3D[i][j + adj].append(self.grid_3D[i][j][order[itter]])
-                            itter += 1
-
-                        # implement the boundary condition and lower the pile at critical value
-                        if self.boundary_con:
-                            self.height_grid[i][j] -= sum(real)
-                            for k in range(sum(real)):
-                                self.grid_3D[i][j].pop()
-                        else:
-                            self.height_grid[i][j] -= 4
-                            for k in range(4):
-                                self.grid_3D[i][j].pop()
-            
-            # Check if the avalanche has stopped propagating
-            if control == avalanche:
-                self.data[self.current_step] = avalanche
-                break
-                
-            control = avalanche
+        self.data[self.current_step] = avalanche_size
 
         self.current_step += 1
 
@@ -135,6 +148,8 @@ class Sandpile_model:
         grain_type = self.get_random_grain_type()
         self.grid_3D[position[0]][position[1]].append(grain_type)
         self.height_grid[position[0]][position[1]] += 1
+
+        return position
 
     def get_random_grain_type(self):
         return np.random.randint(self.n_grain_types)
@@ -243,7 +258,7 @@ class Sandpile_model:
 
 if __name__ == "__main__":
 
-    model = Sandpile_model(grid_size=20, n_steps=100000, crit_values=[2, 4], n_grain_types=2)
+    model = Sandpile_model(grid_size=30, n_steps=10000, crit_values=[4, 4], n_grain_types=2)
     model.run()
 
     print(model.grid_3D)
