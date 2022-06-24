@@ -9,7 +9,7 @@ from plots import plot_time_series, plot_size_probability
 
 class Sandpile_model:
 
-    def __init__(self, grid_size=100, n_grain_types=2, crit_values=[1, 2], n_steps=10000, boundary_con=False, add_method="position", seed=None):
+    def __init__(self, grid_size=100, n_grain_types=2, crit_values=[1, 2], n_steps=10000, boundary_con=False, add_method="position", init_method="random", seed=None):
         """
         The extended sandpile model. This model supports multiple types of grains.
 
@@ -21,6 +21,7 @@ class Sandpile_model:
          - n_steps (int): The number of steps the model runs.
          - boundary_con (bool): True if walled model (sand is not removed) if False sand is removed from the sides
          - add_method (string): The method at which new grains are added
+         - init_method (string): The method specifies how the initial grid is setup
          - seed (int): Set the seed for the random number generators. If None then a random seed is used.
         """
 
@@ -38,6 +39,7 @@ class Sandpile_model:
         self.n_steps = n_steps
         self.boundary_con = boundary_con
         self.add_method = add_method
+        self.init_method = init_method
 
         self.initialize_grids()
 
@@ -49,8 +51,13 @@ class Sandpile_model:
         Initalizes both the height_grid and grid_3D.
         height_grid stores the height at each location i,j
         grid_3D stores the grains at each location i,j
+
+        Possible methods:
+         - None: Create an empty grid
+         - random: create a random grid with z_i <= z^th for all i
         """
 
+        # Create an empty grid with zero height
         self.height_grid = np.zeros((self.grid_size, self.grid_size))
         
         self.grid_3D = []
@@ -59,6 +66,19 @@ class Sandpile_model:
             
             for j in range(self.grid_size):
                 self.grid_3D[i].append([])
+
+        # Prepare the system in an arbitrary stable configuration with z_i <= z^th for all i.
+        if self.init_method == "random":
+            
+            min_treshold = min(self.crit_values)
+
+            for i in range(self.grid_size):
+                for j in range(self.grid_size):
+
+                    n_placements = np.random.randint(min_treshold + 1)
+
+                    for k in range(n_placements):
+                        self.add_grain([i, j])
 
     def run(self):
 
@@ -115,7 +135,8 @@ class Sandpile_model:
 
     def update(self):
         
-        new_grain_pos = self.add_grain()
+        new_grain_pos = self.get_position()   
+        self.add_grain(new_grain_pos)
 
         # update the model simultaneously
         avalanche = 0
@@ -136,9 +157,8 @@ class Sandpile_model:
 
         self.current_step += 1
 
-    def add_grain(self):
+    def add_grain(self, position):
 
-        position = self.get_position()
         grain_type = self.get_random_grain_type()
         self.grid_3D[position[0]][position[1]].append(grain_type)
         self.height_grid[position[0]][position[1]] += 1
@@ -186,21 +206,21 @@ class Sandpile_model:
         in order: left, upper, right and down neighbouring cells.
         """
         
-        neighbours = list()
+        neighbours = np.zeros(4)
         real = np.zeros(4)
-        
+
         if coordinates[0] >= 1:
-            neighbours.append(matrix[coordinates[0] - 1][coordinates[1]])
+            neighbours[0] = matrix[coordinates[0] - 1][coordinates[1]]
             real[0] += 1
         if coordinates[1] >= 1:
-            neighbours.append(matrix[coordinates[0]][coordinates[1] - 1])
+            neighbours[1] = matrix[coordinates[0]][coordinates[1] - 1]
             real[1] += 1
-        
+
         if coordinates[0] < len(matrix) - 1:
-            neighbours.append(matrix[coordinates[0] + 1][coordinates[1]])
+            neighbours[2] = matrix[coordinates[0] + 1][coordinates[1]]
             real[2] += 1
         if coordinates[1] < len(matrix) - 1:
-            neighbours.append(matrix[coordinates[0]][coordinates[1] + 1])
+            neighbours[3] = matrix[coordinates[0]][coordinates[1] + 1]
             real[3] += 1
             
         return neighbours, real
@@ -224,7 +244,7 @@ class Sandpile_model:
         max_avalanche_size = np.amax(avalanche_sizes)
 
         # Since the x scale is logaritmic the bins also have to be logaritmic
-        bins = np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins)
+        bins = np.unique(np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins, dtype=int))
         hist, bin_edges = np.histogram(avalanche_sizes, bins=bins, density=True)
 
         bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
