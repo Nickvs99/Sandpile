@@ -2,6 +2,8 @@ import copy
 import math
 import numpy as np
 import random
+import matplotlib.pyplot as plt
+from mpl_toolkits import mplot3d
 
 from plots import plot_time_series, plot_size_probability
 
@@ -241,10 +243,23 @@ class Sandpile_model:
         
         plot_size_probability([(bin_centers, hist)])
 
-if __name__ == "__main__":
+    def plot_2D(self):
+        plt.imshow(self.height_grid, cmap='hot')
+        plt.show()
 
-    model = Sandpile_model(grid_size=30, n_steps=10000, crit_values=[2, 4], n_grain_types=2)
+    def plot_3D(self):
+        x = np.outer(np.linspace(-2, 2, self.grid_size), np.ones(self.grid_size))
+        y = x.copy().T # transpose
+        fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
+        ax.plot_surface(x, y, self.height_grid,
+                       linewidth=0, antialiased=False)
+        plt.show()
+
+if __name__ == "__main__":
+    model = Sandpile_model(grid_size=15, n_steps=10000, crit_values=[10, 5], n_grain_types=2)
     model.run()
 
-    model.plot_time_series()
-    model.plot_size_probability()
+    # model.plot_time_series()
+    # model.plot_size_probability()
+    # model.plot_2D()
+    model.plot_3D()
