@@ -184,21 +184,21 @@ class Sandpile_model:
         in order: left, upper, right and down neighbouring cells.
         """
         
-        neighbours = list()
+        neighbours = np.zeros(4)
         real = np.zeros(4)
-        
+
         if coordinates[0] >= 1:
-            neighbours.append(matrix[coordinates[0] - 1][coordinates[1]])
+            neighbours[0] = matrix[coordinates[0] - 1][coordinates[1]]
             real[0] += 1
         if coordinates[1] >= 1:
-            neighbours.append(matrix[coordinates[0]][coordinates[1] - 1])
+            neighbours[1] = matrix[coordinates[0]][coordinates[1] - 1]
             real[1] += 1
-        
+
         if coordinates[0] < len(matrix) - 1:
-            neighbours.append(matrix[coordinates[0] + 1][coordinates[1]])
+            neighbours[2] = matrix[coordinates[0] + 1][coordinates[1]]
             real[2] += 1
         if coordinates[1] < len(matrix) - 1:
-            neighbours.append(matrix[coordinates[0]][coordinates[1] + 1])
+            neighbours[3] = matrix[coordinates[0]][coordinates[1] + 1]
             real[3] += 1
             
         return neighbours, real
@@ -222,7 +222,7 @@ class Sandpile_model:
         max_avalanche_size = np.amax(avalanche_sizes)
 
         # Since the x scale is logaritmic the bins also have to be logaritmic
-        bins = np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins)
+        bins = np.unique(np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins, dtype=int))
         hist, bin_edges = np.histogram(avalanche_sizes, bins=bins, density=True)
 
         bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
