@@ -1,7 +1,9 @@
 import copy
 import math
+import matplotlib.pyplot as plt
 import numpy as np
 import random
+from scipy.optimize import curve_fit
 
 from plots import plot_time_series, plot_size_probability
 
@@ -222,6 +224,17 @@ class Sandpile_model:
             real[3] += 1
             
         return neighbours, real
+        
+    def calc_fit_parameters(self, xdata, ydata):
+
+        # Remove data entries where the ydata is zero
+        xdata = xdata[ydata != 0]
+        ydata = ydata[ydata != 0]
+
+        # Fit to the scaled function to minimize the relative error instead of the absolute error
+        popt, pcov = curve_fit(scaled_fit_func, xdata, np.log(ydata))
+
+        return popt, pcov
 
     def collect_time_series_data(self):
         
@@ -247,7 +260,7 @@ class Sandpile_model:
 
         bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
 
-        return bin_centers, hist
+        return np.array(bin_centers), np.array(hist)
 
     def plot_time_series(self):
 
@@ -259,12 +272,30 @@ class Sandpile_model:
 
         bin_centers, hist = self.collect_size_probability_data(n_bins=n_bins)
         
-        plot_size_probability([(bin_centers, hist)])
+        # Remove data entries where the data is zero, this removes the vertical line
+        # And smoothens the data at very low probabilities due to missing avalanches
+        bin_centers = bin_centers[hist != 0]
+        hist = hist[hist != 0]
+
+        # Plot fit
+        popt, pcov = self.calc_fit_parameters(bin_centers, hist)   
+        plt.plot(bin_centers, fit_func(bin_centers, *popt), label=f"fit: tau={popt[0]:.3f}, a={popt[1]:.3f}")
+        
+        plot_size_probability([(bin_centers, hist)], labels=["raw data"])
+
+def fit_func(s, tau, a, C):
+    """ A powerlaw distribution with exponential falloff. C is a normalization constant. """
+
+    return C * s**(-tau) * a**s
+
+def scaled_fit_func(x, tau, a, C):
+
+    return np.log(fit_func(x, tau, a, C))
 
 if __name__ == "__main__":
 
-    model = Sandpile_model(grid_size=5, n_steps=10000, crit_values=[2, 4], n_grain_types=2, init_method="random")
+    model = Sandpile_model(grid_size=20, n_steps=100000, crit_values=[2, 4], n_grain_types=2, init_method="random")
     model.run()
 
     model.plot_time_series()
-    model.plot_size_probability()
+    model.plot_size_probability(n_bins=100)
