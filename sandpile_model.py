@@ -104,45 +104,30 @@ class Sandpile_model:
 
     def avalanche_step(self, i, j):
         # Check if a grain is present at location i,j
-        if len(self.grid_3D[i][j]) == 0:
+        if not self.grid_3D[i][j]:
             return None
         
         # Get neighbour heights and whether they exist
-        neighbour_heights, is_inside = self.get_neighbours(self.height_grid, [i, j])
-        
+        neighbour_heights, is_inside = self.get_neighbours(self.height_grid, i, j)
+        pile_fall = (sum(is_inside) if self.boundary_con else 4)
         grain_type = self.grid_3D[i][j][-1]
 
         # Check whether an avalanche should occur
-        if self.height_grid[i][j] - min(neighbour_heights) >= self.crit_values[grain_type] and self.height_grid[i][j] >= 4:
-
-            top_grains = self.grid_3D[i][j][-4:]
-            random.shuffle(top_grains)
-            next_coords = [(i, j)]
+        if self.height_grid[i][j] - min(neighbour_heights) >= self.crit_values[grain_type] and self.height_grid[i][j] >= pile_fall:
             
+            top_grains = [self.grid_3D[i][j].pop() for _ in range(pile_fall)]
+            self.height_grid[i][j] -= pile_fall
+            random.shuffle(top_grains)
+
+            next_coords = [(i, j)]
             itter = 0
-            for adj in range(-1, 2, 2):
-                if is_inside[itter] == 1:
-                    self.height_grid[i + adj][j] += 1
-                    self.grid_3D[i + adj][j].append(top_grains[itter])
-                    next_coords.append((i + adj, j))
+            for i2, j2 in ((i-1,j), (i,j-1), (i+1,j), (i,j+1)):
+                if is_inside[itter]:
+                    self.height_grid[i2][j2] += 1
+                    self.grid_3D[i2][j2].append(top_grains[itter])
+                    next_coords.append((i2, j2))
                 itter += 1
-
-                if is_inside[itter] == 1:
-                    self.height_grid[i][j + adj] += 1
-                    self.grid_3D[i][j + adj].append(top_grains[itter])
-                    next_coords.append((i, j + adj))
-                itter += 1
-
-            # implement the boundary condition and lower the pile at critical value
-            if self.boundary_con:
-                self.height_grid[i][j] -= sum(is_inside)
-                for k in range(sum(is_inside)):
-                    self.grid_3D[i][j].pop()
-            else:
-                self.height_grid[i][j] -= 4
-                for k in range(4):
-                    self.grid_3D[i][j].pop()
-
+    
             return next_coords
 
         return None
@@ -153,21 +138,16 @@ class Sandpile_model:
         self.add_grain(new_grain_pos)
 
         # update the model simultaneously
-        avalanche = 0
-        control = 0
+        avalanche_stack = [new_grain_pos]
+        self.data[self.current_step] = 0
 
-        avalanche_queue = [new_grain_pos]
-        avalanche_size = 0
-
-        while len(avalanche_queue) > 0:
-            next_pos = avalanche_queue.pop()
+        while avalanche_stack:
+            next_pos = avalanche_stack.pop()
             new_step = self.avalanche_step(next_pos[0], next_pos[1])
-            if new_step != None:
-                avalanche_size += 1
+            if new_step is not None:
+                self.data[self.current_step] += 1
 
-                avalanche_queue.extend(new_step)
-
-        self.data[self.current_step] = avalanche_size
+                avalanche_stack.extend(new_step)
 
         self.current_step += 1
 
@@ -213,29 +193,29 @@ class Sandpile_model:
 
             return randcords
 
-    def get_neighbours(self, matrix, coordinates):
+    def get_neighbours(self, matrix, i, j):
         """
         find the neighbour values of a given cell
         Returns the values and gives the neighbours that exist given the dataset
         in order: left, upper, right and down neighbouring cells.
         """
         
-        neighbours = np.zeros(4)
-        real = np.zeros(4)
+        neighbours = [0,0,0,0]
+        real = [0,0,0,0]
 
-        if coordinates[0] >= 1:
-            neighbours[0] = matrix[coordinates[0] - 1][coordinates[1]]
-            real[0] += 1
-        if coordinates[1] >= 1:
-            neighbours[1] = matrix[coordinates[0]][coordinates[1] - 1]
-            real[1] += 1
+        if i >= 1:
+            neighbours[0] = matrix[i - 1][j]
+            real[0] = 1
+        if j >= 1:
+            neighbours[1] = matrix[i][j - 1]
+            real[1] = 1
 
-        if coordinates[0] < len(matrix) - 1:
-            neighbours[2] = matrix[coordinates[0] + 1][coordinates[1]]
-            real[2] += 1
-        if coordinates[1] < len(matrix) - 1:
-            neighbours[3] = matrix[coordinates[0]][coordinates[1] + 1]
-            real[3] += 1
+        if i < self.grid_size - 1:
+            neighbours[2] = matrix[i + 1][j]
+            real[2] = 1
+        if j < self.grid_size - 1:
+            neighbours[3] = matrix[i][j + 1]
+            real[3] = 1
             
         return neighbours, real
         
@@ -384,9 +364,9 @@ if __name__ == "__main__":
     # model.plot_time_series()
     # model.plot_size_probability(n_bins=100)
     
-    model.plot_slice()
-    model.plot_2D()
-    model.plot_3D(color_type='height')
-    model.plot_3D(color_type='top')
-    model.plot_3D(color_type='avg')
-    model.plot_3D(color_type='mode')
+    # model.plot_slice()
+    # model.plot_2D()
+    # model.plot_3D(color_type='height')
+    # model.plot_3D(color_type='top')
+    # model.plot_3D(color_type='avg')
+    # model.plot_3D(color_type='mode')
