@@ -124,7 +124,7 @@ class Sandpile_model:
             for i2, j2 in ((i-1,j), (i,j-1), (i+1,j), (i,j+1)):
                 if is_inside[itter]:
                     self.height_grid[i2][j2] += 1
-                    self.grid_3D[i2][j2].append(top_grains[itter])
+                    self.grid_3D[i2][j2].append(top_grains.pop())
                     next_coords.append((i2, j2))
                 itter += 1
     
@@ -200,7 +200,10 @@ class Sandpile_model:
         in order: left, upper, right and down neighbouring cells.
         """
         
-        neighbours = [0,0,0,0]
+        if self.boundary_con:
+            neighbours = [float('inf'), float('inf'), float('inf'), float('inf')]
+        else:
+            neighbours = [0,0,0,0]
         real = [0,0,0,0]
 
         if i >= 1:
@@ -358,7 +361,7 @@ class Sandpile_model:
         plt.show()
 
 if __name__ == "__main__":
-    model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, init_method="random")
+    model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, boundary_con=False, init_method="random")
     model.run()
 
     # model.plot_time_series()

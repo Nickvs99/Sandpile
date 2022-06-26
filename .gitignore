@@ -129,3 +129,4 @@ dmypy.json
 .pyre/
 output.file
 .gitignore
+sandpile_modelold.py
