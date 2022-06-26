@@ -6,8 +6,20 @@ import random
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 from scipy.optimize import curve_fit
+from scipy.stats import mode
+from matplotlib import colors as mcolors
+from collections import Counter
 
 from plots import plot_time_series, plot_size_probability
+
+def fit_func(s, tau, a, C):
+    """ A powerlaw distribution with exponential falloff. C is a normalization constant. """
+
+    return C * s**(-tau) * a**s
+
+def scaled_fit_func(x, tau, a, C):
+
+    return np.log(fit_func(x, tau, a, C))
 
 class Sandpile_model:
 
@@ -285,33 +297,96 @@ class Sandpile_model:
         
         plot_size_probability([(bin_centers, hist)], labels=["raw data"])
 
-def fit_func(s, tau, a, C):
-    """ A powerlaw distribution with exponential falloff. C is a normalization constant. """
+    def colormap(self, map_type='height'):
+        if map_type == 'height':
+            return self.height_grid
+        
+        c = np.zeros((self.grid_size,self.grid_size))
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+                if len(self.grid_3D[i][j]) == 0:
+                    c[i][j] = 0
+                    continue
+                elif map_type == 'top':
+                    c[i][j] = self.grid_3D[i][j][-1]
+                elif map_type == 'avg':
+                    c[i][j] = np.mean(self.grid_3D[i][j])
+                elif map_type == 'mode':
+                    c[i][j] = Counter(self.grid_3D[i][j]).most_common(1)[0][0]
+        
+        return c
 
-    return C * s**(-tau) * a**s
-
-def scaled_fit_func(x, tau, a, C):
-
-    return np.log(fit_func(x, tau, a, C))
-
-    def plot_2D(self):
-        plt.imshow(self.height_grid, cmap='hot')
+    def plot_2D(self, color_type='height', cmap='hot'):
+        """
+        Plots the heights of the grain stacks by default, although 
+        other color meanings are possible.
+        """
+        plt.imshow(self.colormap(color_type), cmap='hot')
+        plt.colorbar()
         plt.show()
 
-    def plot_3D(self):
-        x = np.outer(np.linspace(-2, 2, self.grid_size), np.ones(self.grid_size))
-        y = x.copy().T # transpose
+    def plot_3D(self, color_type='top', cmap='jet'):
+        """
+        color_type options:
+            'top': the color indicates the type of the grain at the top of a stack
+            'avg': the color indicates the average grain type in a stack
+            'mode': the color indicates the most frequent grain type in a stack
+            'height' the color indicates the height of a stack 
+        """
+        x = np.outer(range(self.grid_size), np.ones(self.grid_size))
+        y = x.copy().T
+
+        color_values = self.colormap(color_type) 
+        m = plt.cm.ScalarMappable(norm=mcolors.Normalize(color_values.min(), color_values.max()), cmap=cmap)
+        m.set_array([])
+        fcolors = m.to_rgba(color_values)
+
         fig, ax = plt.subplots(subplot_kw={"projection": "3d"})
-        ax.plot_surface(x, y, self.height_grid,
-                       linewidth=0, antialiased=False)
+        ax.plot_surface(x, y, self.height_grid, facecolors=fcolors,
+                       linewidth=0, antialiased=False, shade=False)
+        mappable = plt.cm.ScalarMappable(cmap=cmap)
+        mappable.set_array(color_values)
+        plt.colorbar(mappable)
+        plt.show()
+
+    def plot_slice(self, slice_index=None, rot=False, cmap='jet'):
+        """
+        Plot a slice of the sandpile at "slice_index". If "rot" is True,
+        the slice is taken in the z-axis instead of the x-axis.
+        """
+
+        # plot middle slice by default
+        if slice_index == None:
+            slice_index = self.grid_size // 2
+            
+        matrix = copy.deepcopy(self.grid_3D)
+        tallest_stack = int(np.amax(self.height_grid))
+        
+        # pad with zeroes above stacks
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+                matrix[i][j] = ([elem + 1 for elem in matrix[i][j]] + tallest_stack * [0])[:tallest_stack]
+
+        if rot:
+            matrix = np.rot90(matrix)
+
+        slice_to_plot = np.array(matrix[slice_index])
+        slice_to_plot = np.ma.masked_where(slice_to_plot == 0, slice_to_plot)
+        
+        plt.imshow(np.rot90(slice_to_plot), cmap=cmap)
+        plt.colorbar()
         plt.show()
 
 if __name__ == "__main__":
-    model = Sandpile_model(grid_size=20, n_steps=100000, crit_values=[2, 4], n_grain_types=2, init_method="random")
+    model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, init_method="random")
     model.run()
 
-    model.plot_time_series()
-    model.plot_size_probability(n_bins=100)
-
-    # model.plot_2D()
-    model.plot_3D()
+    # model.plot_time_series()
+    # model.plot_size_probability(n_bins=100)
+    
+    model.plot_slice()
+    model.plot_2D()
+    model.plot_3D(color_type='height')
+    model.plot_3D(color_type='top')
+    model.plot_3D(color_type='avg')
+    model.plot_3D(color_type='mode')
