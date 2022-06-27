@@ -117,7 +117,7 @@ class Sandpile_model:
             
             top_grains = [self.grid_3D[i][j].pop() for _ in range(pile_fall)]
             self.height_grid[i][j] -= pile_fall
-            random.shuffle(top_grains)
+            np.random.shuffle(top_grains)
 
             next_coords = [(i, j)]
             itter = 0
@@ -343,7 +343,7 @@ class Sandpile_model:
             slice_index = self.grid_size // 2
             
         matrix = copy.deepcopy(self.grid_3D)
-        tallest_stack = int(np.amax(self.height_grid))
+        tallest_stack = self.tallest_stack
         
         # pad with zeroes above stacks
         for i in range(self.grid_size):
@@ -360,6 +360,32 @@ class Sandpile_model:
         plt.colorbar()
         plt.show()
 
+    def tallest_stack(self):
+        return int(np.amax(self.height_grid))
+
+    def voxel_plot(self):
+        axes = [self.grid_size, self.grid_size, self.tallest_stack()]
+        grain_grid = np.ones(axes, dtype=np.bool)
+        color_grid = np.zeros(axes + [4], dtype=np.float32)
+
+        for i in range(self.grid_size):
+            for j in range(self.grid_size):
+                for k in range(self.tallest_stack()):
+                    # try:
+                    #     if self.grid_3D[i-1][j][k]+1 and self.grid_3D[i+1][j][k]+1 and self.grid_3D[i][j-1][k]+1 and self.grid_3D[i][j+1][k]+1:
+                    #         grain_grid[i][j][k] = 0
+                    # except:
+                    try:
+                        color_grid[i][j][k] = [np.clip(self.grid_3D[i][j][k] % 2 + 1, 0, 1), np.clip(self.grid_3D[i][j][k] % 2, 0, 1), np.clip(self.grid_3D[i][j][k] % 3 - 1, 0, 1), 1]
+                    except:
+                        grain_grid[i][j][k] = 0
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+        ax.voxels(grain_grid, facecolors=color_grid)
+        ax.set_box_aspect(np.ptp(np.array([getattr(ax, f'get_{axis}lim')() for axis in 'xyz']), axis = 1))
+        plt.show()
+
 if __name__ == "__main__":
     model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, boundary_con=False, init_method="random")
     model.run()
@@ -367,9 +393,13 @@ if __name__ == "__main__":
     # model.plot_time_series()
     # model.plot_size_probability(n_bins=100)
     
+    # model.voxel_plot()
+
     # model.plot_slice()
-    # model.plot_2D()
-    # model.plot_3D(color_type='height')
     # model.plot_3D(color_type='top')
-    # model.plot_3D(color_type='avg')
-    # model.plot_3D(color_type='mode')
+    # model.plot_2D(color_type='height')
+    # model.plot_2D(color_type='top')
+    # model.plot_2D(color_type='avg')
+    # model.plot_2D(color_type='mode')
+
+    # todo: voxels, filmpje avalanches, grafiekje proportion over tijd, kleur threshold ipv type, corner 3D
