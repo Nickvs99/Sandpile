@@ -196,7 +196,7 @@ class Sandpile_model:
             if std == -1:
                 std = math.ceil(self.grid_size/6)
             
-            randcords = [np.random.normal(cords[0], std), np.random.normal(cords[1], std)]
+            randcords = [max(min(int(np.round(np.random.normal(cords[0], std))), size - 1),0), max(min(int(np.round(np.random.normal(cords[1], std))), size - 1),0)]
 
             return randcords
 
