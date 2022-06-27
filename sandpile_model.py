@@ -2,6 +2,8 @@ import copy
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import pickle
 import random
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
@@ -23,7 +25,7 @@ def scaled_fit_func(x, tau, a, C):
 
 class Sandpile_model:
 
-    def __init__(self, grid_size=100, n_grain_types=2, crit_values=[1, 2], n_steps=10000, boundary_con=False, add_method="position", init_method="random", seed=None):
+    def __init__(self, grid_size=100, n_grain_types=2, grain_odds = [], crit_values=[1, 2], n_steps=10000, boundary_con=False, add_method="position", init_method="random", seed=None):
         """
         The extended sandpile model. This model supports multiple types of grains.
 
@@ -42,7 +44,13 @@ class Sandpile_model:
         # Check for valid input parameters
         if len(crit_values) != n_grain_types:
             raise Exception("Error: length of crit values does not match with the number of grain types")
-
+            
+        if grain_odds == []:
+            grain_odds = [1/n_grain_types] * n_grain_types
+            
+        if len(grain_odds) != n_grain_types:
+            raise Exception("Error: length of grain odds does not match with the number of grain types")
+            
         if seed:
             np.random.seed(seed)
             random.seed(seed)
@@ -54,7 +62,8 @@ class Sandpile_model:
         self.boundary_con = boundary_con
         self.add_method = add_method
         self.init_method = init_method
-
+        self.grain_odds = grain_odds
+        
         self.initialize_grids()
 
         self.current_step = 0
@@ -160,7 +169,7 @@ class Sandpile_model:
         return position
 
     def get_random_grain_type(self):
-        return np.random.randint(self.n_grain_types)
+        return np.random.choice(np.arange(0, self.n_grain_types), p = self.grain_odds)
 
     def get_position(self, cords=[-1,-1], std=-1):
         """
@@ -189,7 +198,7 @@ class Sandpile_model:
             if std == -1:
                 std = math.ceil(self.grid_size/6)
             
-            randcords = [np.random.normal(cords[0], std), np.random.normal(cords[1], std)]
+            randcords = [max(min(int(np.round(np.random.normal(cords[0], std))), size - 1),0), max(min(int(np.round(np.random.normal(cords[1], std))), size - 1),0)]
 
             return randcords
 
@@ -385,14 +394,88 @@ class Sandpile_model:
         ax.voxels(grain_grid, facecolors=color_grid)
         ax.set_box_aspect(np.ptp(np.array([getattr(ax, f'get_{axis}lim')() for axis in 'xyz']), axis = 1))
         plt.show()
+        
+    def save(self):
+
+        data_dir = "data"
+        
+        # Check if data folder exists
+        if not os.path.isdir(data_dir):
+            print("Creating data directory...")
+
+            os.mkdir(data_dir)
+
+        # Check if model has completed
+        if self.current_step != self.n_steps:
+            print("WARNING: You are saving a model which has not completed.")
+
+        file_name = self.get_file_name()
+
+        save_location = os.path.join(data_dir, file_name)
+
+        print(f"Saving data to {save_location}...")
+        with open(save_location, 'wb') as f:
+            pickle.dump(self, f)
+    
+    def load_or_run(self):
+        """
+        Attempts to load an already saved instance with the current parameters. 
+        If no load file exists with these parameters, the instance will run 
+        and save itself. 
+        """
+
+        data_dir = "data"
+        file_name = self.get_file_name()
+        load_location = os.path.join(data_dir, file_name)
+
+        if os.path.isfile(load_location):
+            
+            print(f"Loading data {self}...")
+            with open(load_location, 'rb') as f:
+                obj = pickle.load(f)
+
+                # Copies the values from the saved instance into the current instance
+                self.__dict__ = copy.deepcopy(obj.__dict__)
+
+
+            # Check if model has completed
+            if self.current_step != self.n_steps:
+                print("WARNING: You are loading a model which has not completed.")
+
+        else:
+            print(f"Running model {self}...")
+            self.run()
+            self.save()
+    
+    def get_file_name(self):
+
+        return f"data_N_{self.n_steps}_GS_{self.grid_size}_n_{self.n_grain_types}_GO_{self.grain_odds}_CR_{self.crit_values}_ADD_{self.add_method}_INIT_{self.init_method}_B_{self.boundary_con}.pickle"
+    
+    def __str__(self):
+
+        # Return file name without the extension
+        return self.get_file_name()[:-7]
+
 
 if __name__ == "__main__":
-    model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, boundary_con=False, init_method="random")
-    model.run()
+    
+    grain_tresholds = np.arange(1, 11)
+
+    for i, grain_treshold1 in enumerate(grain_tresholds):
+
+        # Since the results are symmetric not all possibilies need to be tested
+        # eg. the tresholds (1, 2) and (2, 1) should give the same results
+        for j, grain_treshold2 in enumerate(grain_tresholds[:i + 1]):
+        
+            model = Sandpile_model(grid_size=32, n_steps=1000000, crit_values=[grain_treshold1, grain_treshold2], n_grain_types=2, init_method="random", add_method="random")
+            model.load_or_run()
+
+    # model = Sandpile_model(grid_size=32, n_steps=5000, crit_values=[3, 1], n_grain_types=2, boundary_con=False, init_method="random")
+    # model.load_or_run()
 
     # model.plot_time_series()
     # model.plot_size_probability(n_bins=100)
-    
+    # todo: voxels, filmpje avalanches, grafiekje proportion over tijd, kleur threshold ipv type, corner 3D
     # model.voxel_plot()
 
     # model.plot_slice()
@@ -402,4 +485,5 @@ if __name__ == "__main__":
     # model.plot_2D(color_type='avg')
     # model.plot_2D(color_type='mode')
 
-    # todo: voxels, filmpje avalanches, grafiekje proportion over tijd, kleur threshold ipv type, corner 3D
+    
+    # model.save("Sandpile_N_" + str(int(round(math.log10(model.n_steps), 0))) + "_CR_" + str(model.crit_values[0]) + str(model.crit_values[1])+ "_AM_" + model.init_method + "_GS_" + str(model.grid_size))
