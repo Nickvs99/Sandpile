@@ -352,7 +352,7 @@ class Sandpile_model:
             slice_index = self.grid_size // 2
             
         matrix = copy.deepcopy(self.grid_3D)
-        tallest_stack = self.tallest_stack
+        tallest_stack = self.tallest_stack()
         
         # pad with zeroes above stacks
         for i in range(self.grid_size):
