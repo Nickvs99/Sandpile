@@ -2,6 +2,8 @@ import copy
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import pickle
 import random
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
@@ -366,19 +368,84 @@ class Sandpile_model:
         plt.imshow(np.rot90(slice_to_plot), cmap=cmap)
         plt.colorbar()
         plt.show()
+
+    def save(self):
+
+        data_dir = "data"
         
-    def save(self, name = "Untitled"):
-        with open(name + ".pkl", 'wb') as f:
-            pickle.dump([self.data, self.height_grid, self.grid_3D, self.n_steps], f)
+        # Check if data folder exists
+        if not os.path.isdir(data_dir):
+            print("Creating data directory...")
+
+            os.mkdir(data_dir)
+
+        # Check if model has completed
+        if self.current_step != self.n_steps:
+            print("WARNING: You are saving a model which has not completed.")
+
+        file_name = self.get_file_name()
+
+        save_location = os.path.join(data_dir, file_name)
+
+        print(f"Saving data to {save_location}...")
+        with open(save_location, 'wb') as f:
+            pickle.dump(self, f)
     
-    def load(self, name = "Untitled"):
-        with open(name + ".pkl", 'rb') as f:
-            data, height_grid, grid_3D, n_steps = pickle.load(f)
-            return data, height_grid, grid_3D, n_steps
+    def load_or_run(self):
+        """
+        Attempts to load an already saved instance with the current parameters. 
+        If no load file exists with these parameters, the instance will run 
+        and save itself. 
+        """
+
+        data_dir = "data"
+        file_name = self.get_file_name()
+        load_location = os.path.join(data_dir, file_name)
+
+        if os.path.isfile(load_location):
+            
+            print(f"Loading data {self}...")
+            with open(load_location, 'rb') as f:
+                obj = pickle.load(f)
+
+                # Copies the values from the saved instance into the current instance
+                self.__dict__ = copy.deepcopy(obj.__dict__)
+
+
+            # Check if model has completed
+            if self.current_step != self.n_steps:
+                print("WARNING: You are loading a model which has not completed.")
+
+        else:
+            print(f"Running model {self}...")
+            self.run()
+            self.save()
+    
+    def get_file_name(self):
+
+        return f"data_N_{self.n_steps}_GS_{self.grid_size}_n_{self.n_grain_types}_GO_{self.grain_odds}_CR_{self.crit_values}_ADD_{self.add_method}_INIT_{self.init_method}_B_{self.boundary_con}.pickle"
+    
+    def __str__(self):
+
+        # Return file name without the extension
+        return self.get_file_name()[:-7]
+
 
 if __name__ == "__main__":
-    model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, boundary_con=False, init_method="random")
-    model.run()
+    
+    grain_tresholds = np.arange(1, 11)
+
+    for i, grain_treshold1 in enumerate(grain_tresholds):
+
+        # Since the results are symmetric not all possibilies need to be tested
+        # eg. the tresholds (1, 2) and (2, 1) should give the same results
+        for j, grain_treshold2 in enumerate(grain_tresholds[:i + 1]):
+        
+            model = Sandpile_model(grid_size=32, n_steps=1000000, crit_values=[grain_treshold1, grain_treshold2], n_grain_types=2, init_method="random", add_method="random")
+            model.load_or_run()
+
+    # model = Sandpile_model(grid_size=32, n_steps=5000, crit_values=[3, 1], n_grain_types=2, boundary_con=False, init_method="random")
+    # model.load_or_run()
 
     # model.plot_time_series()
     # model.plot_size_probability(n_bins=100)
