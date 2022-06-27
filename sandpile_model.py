@@ -23,7 +23,7 @@ def scaled_fit_func(x, tau, a, C):
 
 class Sandpile_model:
 
-    def __init__(self, grid_size=100, n_grain_types=2, crit_values=[1, 2], n_steps=10000, boundary_con=False, add_method="position", init_method="random", seed=None):
+    def __init__(self, grid_size=100, n_grain_types=2, grain_odds = [], crit_values=[1, 2], n_steps=10000, boundary_con=False, add_method="position", init_method="random", seed=None):
         """
         The extended sandpile model. This model supports multiple types of grains.
 
@@ -42,7 +42,13 @@ class Sandpile_model:
         # Check for valid input parameters
         if len(crit_values) != n_grain_types:
             raise Exception("Error: length of crit values does not match with the number of grain types")
-
+            
+        if grain_odds == []:
+            grain_odds = [1/n_grain_types] * n_grain_types
+            
+        if len(grain_odds) != n_grain_types:
+            raise Exception("Error: length of grain odds does not match with the number of grain types")
+            
         if seed:
             np.random.seed(seed)
             random.seed(seed)
@@ -54,7 +60,8 @@ class Sandpile_model:
         self.boundary_con = boundary_con
         self.add_method = add_method
         self.init_method = init_method
-
+        self.grain_odds = grain_odds
+        
         self.initialize_grids()
 
         self.current_step = 0
@@ -160,7 +167,7 @@ class Sandpile_model:
         return position
 
     def get_random_grain_type(self):
-        return np.random.randint(self.n_grain_types)
+        return np.random.choice(np.arange(0, self.n_grain_types), p = self.grain_odds)
 
     def get_position(self, cords=[-1,-1], std=-1):
         """
@@ -359,6 +366,15 @@ class Sandpile_model:
         plt.imshow(np.rot90(slice_to_plot), cmap=cmap)
         plt.colorbar()
         plt.show()
+        
+    def save(self, name = "Untitled"):
+        with open(name + ".pkl", 'wb') as f:
+            pickle.dump([self.data, self.height_grid, self.grid_3D, self.n_steps], f)
+    
+    def load(self, name = "Untitled"):
+        with open(name + ".pkl", 'rb') as f:
+            data, height_grid, grid_3D, n_steps = pickle.load(f)
+            return data, height_grid, grid_3D, n_steps
 
 if __name__ == "__main__":
     model = Sandpile_model(grid_size=20, n_steps=10000, crit_values=[4, 8], n_grain_types=2, boundary_con=False, init_method="random")
@@ -373,3 +389,4 @@ if __name__ == "__main__":
     # model.plot_3D(color_type='top')
     # model.plot_3D(color_type='avg')
     # model.plot_3D(color_type='mode')
+    # model.save("Sandpile_N_" + str(int(round(math.log10(model.n_steps), 0))) + "_CR_" + str(model.crit_values[0]) + str(model.crit_values[1])+ "_AM_" + model.init_method + "_GS_" + str(model.grid_size))
