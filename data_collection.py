@@ -11,7 +11,7 @@ def run_and_save_model(parameters):
 def get_treshold_research_arguments():
     
     arguments = []
-    tresholds = np.arange(1, 11, 3)
+    tresholds = np.arange(1, 11, 1)
 
     for i, grain_treshold1 in enumerate(tresholds):
 
