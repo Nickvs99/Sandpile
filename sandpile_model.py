@@ -6,11 +6,13 @@ import os
 import pickle
 import random
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from mpl_toolkits import mplot3d
 from scipy.optimize import curve_fit
 from scipy.stats import mode
 from matplotlib import colors as mcolors
 from collections import Counter
+from itertools import chain
 
 from plots import plot_time_series, plot_size_probability
 
@@ -300,22 +302,56 @@ class Sandpile_model:
                     c[i][j] = 0
                     continue
                 elif map_type == 'top':
-                    c[i][j] = self.grid_3D[i][j][-1]
+                    c[i][j] = self.grid_3D[i][j][-1]+1
                 elif map_type == 'avg':
-                    c[i][j] = np.mean(self.grid_3D[i][j])
+                    c[i][j] = np.mean([self.crit_values[item] for item in self.grid_3D[i][j]])
                 elif map_type == 'mode':
-                    c[i][j] = Counter(self.grid_3D[i][j]).most_common(1)[0][0]
+                    c[i][j] = Counter(self.grid_3D[i][j]).most_common(1)[0][0]+1
         
         return c
 
-    def plot_2D(self, color_type='height', cmap='hot'):
+    def plot_2D(self, frame=None, animate=False, show=True, color_type='height', cmap='hot'):
         """
         Plots the heights of the grain stacks by default, although 
         other color meanings are possible.
         """
-        plt.imshow(self.colormap(color_type), cmap='hot')
-        plt.colorbar()
-        plt.show()
+        if animate:
+            self.update()
+            self.im.set_array(self.colormap(color_type))
+            if self.current_step % 100 == 0:
+                print(f"Step {self.current_step} of {self.n_steps}", end="\r")
+            return self.im,
+        else:
+            self.im = plt.imshow(self.colormap(color_type), cmap=cmap, animated=True)
+            plt.colorbar()
+            if color_type == 'height':
+                plt.title("Height of stacks")
+            elif color_type == 'top':
+                plt.title("Top grains")
+            elif color_type == 'avg':
+                plt.title("Average threshold in stack")
+            elif color_type == 'mode':
+                plt.title("Most frequent grain type in stack")
+                
+            if show:
+                plt.show()
+
+            
+
+    def animate_2D(self, ani_func, fargs, color_type='top', cmap='gnuplot', save=False):
+        fig = plt.figure()
+        ani_func(*(None, False,)+fargs)
+        self.ani = animation.FuncAnimation(fig, ani_func, fargs=(True,)+fargs, frames=range(self.n_steps-2), interval=1, blit=True, repeat=False)
+        
+        if save != False:
+            import matplotlib as mpl 
+            mpl.rcParams['animation.ffmpeg_path'] = r'C:\\Users\\sande\\Desktop\\ffmpeg\\bin\\ffmpeg.exe'
+            f = f"animation.mp4" 
+            writervideo = animation.FFMpegWriter(fps=60)
+            # self.ani.save('2osc.mp4', writer="ffmpeg")
+            self.ani.save(f, writer=writervideo)
+        else:
+            plt.show()
 
     def plot_3D(self, color_type='top', cmap='jet'):
         """
@@ -341,23 +377,25 @@ class Sandpile_model:
         plt.colorbar(mappable)
         plt.show()
 
-    def plot_slice(self, slice_index=None, rot=False, cmap='jet'):
+    def plot_slice(self, frame=None, animate=False, show=True, slice_index=None, rot=False, cmap='jet'):
         """
         Plot a slice of the sandpile at "slice_index". If "rot" is True,
         the slice is taken in the z-axis instead of the x-axis.
         """
-
         # plot middle slice by default
         if slice_index == None:
             slice_index = self.grid_size // 2
             
         matrix = copy.deepcopy(self.grid_3D)
-        tallest_stack = self.tallest_stack()
         
         # pad with zeroes above stacks
+        if animate or not show:
+            padding = self.grid_size // 3 * max(self.crit_values)
+        else:
+            padding = self.tallest_stack()
         for i in range(self.grid_size):
             for j in range(self.grid_size):
-                matrix[i][j] = ([elem + 1 for elem in matrix[i][j]] + tallest_stack * [0])[:tallest_stack]
+                matrix[i][j] = ([elem + 1 for elem in matrix[i][j]] + padding * [0])[:padding]
 
         if rot:
             matrix = np.rot90(matrix)
@@ -365,9 +403,17 @@ class Sandpile_model:
         slice_to_plot = np.array(matrix[slice_index])
         slice_to_plot = np.ma.masked_where(slice_to_plot == 0, slice_to_plot)
         
-        plt.imshow(np.rot90(slice_to_plot), cmap=cmap)
-        plt.colorbar()
-        plt.show()
+        if animate:
+            self.update()
+            self.im.set_array(np.rot90(slice_to_plot))
+            if self.current_step % 100 == 0:
+                print(f"Step {self.current_step} of {self.n_steps}", end="\r")
+            return self.im,
+        else:
+            self.im = plt.imshow(np.rot90(slice_to_plot), cmap=cmap, animated=True)
+            plt.colorbar()
+            if show:
+                plt.show()
 
     def tallest_stack(self):
         return int(np.amax(self.height_grid))
@@ -380,14 +426,14 @@ class Sandpile_model:
         for i in range(self.grid_size):
             for j in range(self.grid_size):
                 for k in range(self.tallest_stack()):
-                    # try:
-                    #     if self.grid_3D[i-1][j][k]+1 and self.grid_3D[i+1][j][k]+1 and self.grid_3D[i][j-1][k]+1 and self.grid_3D[i][j+1][k]+1:
-                    #         grain_grid[i][j][k] = 0
-                    # except:
                     try:
-                        color_grid[i][j][k] = [np.clip(self.grid_3D[i][j][k] % 2 + 1, 0, 1), np.clip(self.grid_3D[i][j][k] % 2, 0, 1), np.clip(self.grid_3D[i][j][k] % 3 - 1, 0, 1), 1]
+                        if self.grid_3D[i-1][j][k]+1 and self.grid_3D[i+1][j][k]+1 and self.grid_3D[i][j-1][k]+1 and self.grid_3D[i][j+1][k]+1 and self.grid_3D[i][j][k+1]+1 and 1/k:
+                            grain_grid[i][j][k] = 0
                     except:
-                        grain_grid[i][j][k] = 0
+                        try:
+                            color_grid[i][j][k] = ([np.clip(self.grid_3D[i][j][k] % 2 + 1, 0, 1), np.clip(self.grid_3D[i][j][k] % 2, 0, 1), np.clip(self.grid_3D[i][j][k] % 3 - 1, 0, 1), 1])
+                        except:
+                            grain_grid[i][j][k] = 0
 
         fig = plt.figure()
         ax = fig.add_subplot(111, projection='3d')
@@ -395,6 +441,42 @@ class Sandpile_model:
         ax.set_box_aspect(np.ptp(np.array([getattr(ax, f'get_{axis}lim')() for axis in 'xyz']), axis = 1))
         plt.show()
         
+    def proportions(self, array):
+        flattened=array
+        while type(flattened[0]) == list:
+            flattened = list(chain.from_iterable(flattened))
+        unique, counts = np.unique(flattened, return_counts=True)
+        counts = dict(zip(unique, counts))
+        for t in range(self.n_grain_types):
+            if t not in counts:
+                counts[t] = 0
+        counts = np.array([item[1] for item in sorted(counts.items())])
+        return counts / sum(counts)
+    
+    def proportions_over_time(self, prop_type=("top")):
+        props_top = []
+        props_total = []
+
+        while self.current_step < self.n_steps:
+            self.update()
+            if "top" in prop_type:
+                props_top.append(self.proportions(self.colormap('top')))
+            if "total" in prop_type:
+                props_total.append(self.proportions(self.grid_3D))
+
+            if self.current_step % 1000 == 0:
+                print(f"Step {self.current_step} of {self.n_steps}", end="\r")
+
+        if "top" in prop_type:
+            plt.plot(range(len(props_top)), props_top, label=range(len(props_top[0])))
+            plt.legend()
+            plt.show()
+
+        if "total" in prop_type:
+            plt.plot(range(len(props_total)), props_total, label=range(len(props_total[0])))
+            plt.legend()
+            plt.show()
+
     def save(self):
 
         data_dir = "data"
@@ -459,31 +541,36 @@ class Sandpile_model:
 
 if __name__ == "__main__":
     
-    grain_tresholds = np.arange(1, 11)
+    # grain_tresholds = np.arange(1, 11)
 
-    for i, grain_treshold1 in enumerate(grain_tresholds):
+    # for i, grain_treshold1 in enumerate(grain_tresholds):
 
-        # Since the results are symmetric not all possibilies need to be tested
-        # eg. the tresholds (1, 2) and (2, 1) should give the same results
-        for j, grain_treshold2 in enumerate(grain_tresholds[:i + 1]):
+    #     # Since the results are symmetric not all possibilies need to be tested
+    #     # eg. the tresholds (1, 2) and (2, 1) should give the same results
+    #     for j, grain_treshold2 in enumerate(grain_tresholds[:i + 1]):
         
-            model = Sandpile_model(grid_size=32, n_steps=1000000, crit_values=[grain_treshold1, grain_treshold2], n_grain_types=2, init_method="random", add_method="random")
-            model.load_or_run()
+    #         model = Sandpile_model(grid_size=32, n_steps=1000000, crit_values=[grain_treshold1, grain_treshold2], n_grain_types=2, init_method="random", add_method="random")
+    #         model.load_or_run()
 
-    # model = Sandpile_model(grid_size=32, n_steps=5000, crit_values=[3, 1], n_grain_types=2, boundary_con=False, init_method="random")
+    model = Sandpile_model(grid_size=20, n_steps=100, crit_values=[4, 10], n_grain_types=2, add_method="position", boundary_con=False, init_method="random")
     # model.load_or_run()
 
     # model.plot_time_series()
     # model.plot_size_probability(n_bins=100)
-    # todo: voxels, filmpje avalanches, grafiekje proportion over tijd, kleur threshold ipv type, corner 3D
-    # model.voxel_plot()
 
-    # model.plot_slice()
-    # model.plot_3D(color_type='top')
-    # model.plot_2D(color_type='height')
-    # model.plot_2D(color_type='top')
-    # model.plot_2D(color_type='avg')
-    # model.plot_2D(color_type='mode')
+    # todo: voxels, filmpje avalanches, grafiekje proportion over tijd, kleur threshold ipv type, corner 3D
+    
+    model.animate_2D(model.plot_2D, (False, "top", "gnuplot"), save=False)
+    # model.animate_2D(model.plot_slice, (False,), save=False)
+    # model.proportions_over_time(("top", "total"))
+
+    model.voxel_plot()
+    model.plot_slice(cmap='gnuplot')
+    model.plot_3D(color_type='top', cmap='gnuplot')
+    model.plot_2D(color_type='height')
+    model.plot_2D(color_type='top', cmap='gnuplot')
+    model.plot_2D(color_type='avg')
+    model.plot_2D(color_type='mode', cmap='gnuplot')
 
     
     # model.save("Sandpile_N_" + str(int(round(math.log10(model.n_steps), 0))) + "_CR_" + str(model.crit_values[0]) + str(model.crit_values[1])+ "_AM_" + model.init_method + "_GS_" + str(model.grid_size))

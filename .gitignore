@@ -131,3 +131,5 @@ output.file
 .gitignore
 sandpile_modelold.py
 temp.py
+animation.mp4
+data/data_N_10000_GS_20_n_2_GO_[0.5, 0.5]_CR_[4, 4]_ADD_position_INIT_random_B_False.pickle

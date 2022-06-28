@@ -26,7 +26,7 @@ def get_treshold_research_arguments():
                 "crit_values": [grain_treshold1, grain_treshold2],
                 "n_grain_types": 2,
                 "init_method": "random",
-                "add_method": "random"
+                "add_method": "position"
             })
 
     return arguments
