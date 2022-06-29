@@ -28,11 +28,8 @@ def plot_size_probability(dataset, labels=[]):
         dataset (list of tuples): Each tuple holds a x and y value.
     """
     
-    dataset = np.array(dataset)
+    dataset = np.array(dataset, dtype=object)
 
-    if dataset.ndim != 3:
-        print("WARNING: The dataset has the wrong number of dimensions. The results are likely not placed in a list.")
-    
     for i, data in enumerate(dataset):
 
         if len(labels) == 0:
@@ -46,7 +43,7 @@ def plot_size_probability(dataset, labels=[]):
     plt.yscale('log')
     
     plt.xlabel("s")
-    plt.ylabel("P(s;L)")
+    plt.ylabel("P(s)")
     
     if len(labels) != 0:
         plt.legend()

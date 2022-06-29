@@ -34,7 +34,7 @@ class Sandpile_model:
         Arguments:
          - grid_size (int): size of the grid
          - n_grain_types (int): the number of types of grains
-         - crit_valeus (list): The critical values of the grains. This list needs to be the same length
+         - crit_values (list): The critical values of the grains. This list needs to be the same length
                 as there are n_grain_types.
          - n_steps (int): The number of steps the model runs.
          - boundary_con (bool): True if walled model (sand is not removed) if False sand is removed from the sides
@@ -266,9 +266,15 @@ class Sandpile_model:
         bins = np.unique(np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins, dtype=int))
         hist, bin_edges = np.histogram(avalanche_sizes, bins=bins, density=True)
 
-        bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
+        bin_centers = np.array([(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)])
+        hist = np.array(hist)
 
-        return np.array(bin_centers), np.array(hist)
+        # Remove data entries where the data is zero, this removes the vertical line
+        # And smoothens the data at very low probabilities due to missing avalanches
+        bin_centers = bin_centers[hist != 0]
+        hist = hist[hist != 0]
+
+        return bin_centers, hist
 
 #region plots
     def plot_time_series(self):
@@ -281,11 +287,6 @@ class Sandpile_model:
 
         bin_centers, hist = self.collect_size_probability_data(n_bins=n_bins)
         
-        # Remove data entries where the data is zero, this removes the vertical line
-        # And smoothens the data at very low probabilities due to missing avalanches
-        bin_centers = bin_centers[hist != 0]
-        hist = hist[hist != 0]
-
         if show_fit:
             popt, pcov = self.calc_fit_parameters(bin_centers, hist)   
             plt.plot(bin_centers, fit_func(bin_centers, *popt), label=f"fit: tau={popt[0]:.3f}, a={popt[1]:.3f}")
