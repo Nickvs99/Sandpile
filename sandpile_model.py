@@ -270,13 +270,14 @@ class Sandpile_model:
 
         return np.array(bin_centers), np.array(hist)
 
+#region plots
     def plot_time_series(self):
 
         ts, time_series_data = self.collect_time_series_data()
 
         plot_time_series([(ts, time_series_data)])
 
-    def plot_size_probability(self, n_bins=20):
+    def plot_size_probability(self, n_bins=20, show_fit=True):
 
         bin_centers, hist = self.collect_size_probability_data(n_bins=n_bins)
         
@@ -285,11 +286,15 @@ class Sandpile_model:
         bin_centers = bin_centers[hist != 0]
         hist = hist[hist != 0]
 
-        # Plot fit
-        popt, pcov = self.calc_fit_parameters(bin_centers, hist)   
-        plt.plot(bin_centers, fit_func(bin_centers, *popt), label=f"fit: tau={popt[0]:.3f}, a={popt[1]:.3f}")
-        
-        plot_size_probability([(bin_centers, hist)], labels=["raw data"])
+        if show_fit:
+            popt, pcov = self.calc_fit_parameters(bin_centers, hist)   
+            plt.plot(bin_centers, fit_func(bin_centers, *popt), label=f"fit: tau={popt[0]:.3f}, a={popt[1]:.3f}")
+
+            labels = ["raw data"]
+        else:
+            labels = []
+
+        plot_size_probability([(bin_centers, hist)], labels=labels)
 
     def colormap(self, map_type='height'):
         if map_type == 'height':
@@ -476,7 +481,9 @@ class Sandpile_model:
             plt.plot(range(len(props_total)), props_total, label=range(len(props_total[0])))
             plt.legend()
             plt.show()
+#endregion
 
+#region save load
     def save(self):
 
         data_dir = "data"
@@ -537,7 +544,7 @@ class Sandpile_model:
 
         # Return file name without the extension
         return self.get_file_name()[:-7]
-
+#endregion
 
 if __name__ == "__main__":
     
