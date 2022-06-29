@@ -191,7 +191,7 @@ class Sandpile_model:
             
             # set value of standard deviation
             if std == -1:
-                std = math.ceil(self.grid_size/2)
+                std = math.ceil(self.grid_size/12)
             
             randcords = [-1, -1]
             while min(randcords) < 0 or max(randcords) >= self.grid_size:
