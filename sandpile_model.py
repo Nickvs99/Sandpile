@@ -34,7 +34,7 @@ class Sandpile_model:
         Arguments:
          - grid_size (int): size of the grid
          - n_grain_types (int): the number of types of grains
-         - crit_valeus (list): The critical values of the grains. This list needs to be the same length
+         - crit_values (list): The critical values of the grains. This list needs to be the same length
                 as there are n_grain_types.
          - n_steps (int): The number of steps the model runs.
          - boundary_con (bool): True if walled model (sand is not removed) if False sand is removed from the sides
@@ -181,28 +181,30 @@ class Sandpile_model:
          - normal: at a normal distribution with given stanardard deviation around given position
                    standard postion is center and standard deviation is 1/6 th of the matrix size (3 SD intervall covers 99.9% of the matrix)
         """
-
-        if self.add_method.lower() == "random":
-            randcords = [np.random.randint(self.grid_size - 1), np.random.randint(self.grid_size - 1)]
-            return randcords
-        
         # set values of cordinates if no values are given
         if cords[0] == -1:
             cords[0] = math.floor(self.grid_size/2)
         if cords[1] == -1:
             cords[1] = math.floor(self.grid_size/2)
+            
+        if self.add_method.lower() == "normal":
+            
+            # set value of standard deviation
+            if std == -1:
+                std = math.ceil(self.grid_size/12)
+            
+            randcords = [-1, -1]
+            while min(randcords) < 0 or max(randcords) >= self.grid_size:
+                randcords = [int(np.round(np.random.normal(cords[0], std))), int(np.round(np.random.normal(cords[1], std)))]
+                
+            return randcords
+            
+        if self.add_method.lower() == "random":
+            randcords = [np.random.randint(self.grid_size - 1), np.random.randint(self.grid_size - 1)]
+            return randcords
         
         if self.add_method.lower() == "position":
             return cords
-        
-        if self.add_method.lower() == "normal":
-            # set value of standard deviation
-            if std == -1:
-                std = math.ceil(self.grid_size/6)
-            
-            randcords = [max(min(int(np.round(np.random.normal(cords[0], std))), size - 1),0), max(min(int(np.round(np.random.normal(cords[1], std))), size - 1),0)]
-
-            return randcords
 
     def get_neighbours(self, matrix, i, j):
         """
@@ -266,30 +268,36 @@ class Sandpile_model:
         bins = np.unique(np.logspace(np.floor(np.log10(min_avalanche_size)), np.ceil(np.log10(max_avalanche_size)), num=n_bins, dtype=int))
         hist, bin_edges = np.histogram(avalanche_sizes, bins=bins, density=True)
 
-        bin_centers = [(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)]
+        bin_centers = np.array([(bin_edges[i] + bin_edges[i + 1]) / 2 for i in range(len(bin_edges) - 1)])
+        hist = np.array(hist)
 
-        return np.array(bin_centers), np.array(hist)
+        # Remove data entries where the data is zero, this removes the vertical line
+        # And smoothens the data at very low probabilities due to missing avalanches
+        bin_centers = bin_centers[hist != 0]
+        hist = hist[hist != 0]
 
+        return bin_centers, hist
+
+#region plots
     def plot_time_series(self):
 
         ts, time_series_data = self.collect_time_series_data()
 
         plot_time_series([(ts, time_series_data)])
 
-    def plot_size_probability(self, n_bins=20):
+    def plot_size_probability(self, n_bins=20, show_fit=True):
 
         bin_centers, hist = self.collect_size_probability_data(n_bins=n_bins)
         
-        # Remove data entries where the data is zero, this removes the vertical line
-        # And smoothens the data at very low probabilities due to missing avalanches
-        bin_centers = bin_centers[hist != 0]
-        hist = hist[hist != 0]
+        if show_fit:
+            popt, pcov = self.calc_fit_parameters(bin_centers, hist)   
+            plt.plot(bin_centers, fit_func(bin_centers, *popt), label=f"fit: tau={popt[0]:.3f}, a={popt[1]:.3f}")
 
-        # Plot fit
-        popt, pcov = self.calc_fit_parameters(bin_centers, hist)   
-        plt.plot(bin_centers, fit_func(bin_centers, *popt), label=f"fit: tau={popt[0]:.3f}, a={popt[1]:.3f}")
-        
-        plot_size_probability([(bin_centers, hist)], labels=["raw data"])
+            labels = ["raw data"]
+        else:
+            labels = []
+
+        plot_size_probability([(bin_centers, hist)], labels=labels)
 
     def colormap(self, map_type='height'):
         if map_type == 'height':
@@ -486,7 +494,9 @@ class Sandpile_model:
             plt.xlabel("Steps")
             plt.ylabel("Proportion")
             plt.show()
+#endregion
 
+#region save load
     def save(self):
 
         data_dir = "data"
@@ -547,7 +557,7 @@ class Sandpile_model:
 
         # Return file name without the extension
         return self.get_file_name()[:-7]
-
+#endregion
 
 if __name__ == "__main__":
     

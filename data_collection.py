@@ -32,10 +32,28 @@ def get_treshold_research_arguments():
 
     return arguments
 
+def get_avalance_distribution_research_arguments():
+
+    arguments = []
+    grid_sizes = np.logspace(4, 10, base=2, num=7, dtype=int)
+
+    for grid_size in grid_sizes:
+
+        arguments.append({
+            "grid_size": grid_size,
+            "n_steps": 1000000,
+            "crit_values": [2, 4],
+            "n_grain_types": 2,
+            "init_method": "random",
+            "add_method": "random"
+        })
+
+    return arguments
+
 if __name__ == "__main__":
 
-    arguments = get_treshold_research_arguments()
-
+    # arguments = get_treshold_research_arguments()
+    arguments = get_avalance_distribution_research_arguments()
     # Creates a pool of processes, which will perform the run_and_save_model function for
     # each argument in arguments. The argument is the parameter settings for the model
     pool = mp.Pool()
