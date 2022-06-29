@@ -181,28 +181,30 @@ class Sandpile_model:
          - normal: at a normal distribution with given stanardard deviation around given position
                    standard postion is center and standard deviation is 1/6 th of the matrix size (3 SD intervall covers 99.9% of the matrix)
         """
-
-        if self.add_method.lower() == "random":
-            randcords = [np.random.randint(self.grid_size - 1), np.random.randint(self.grid_size - 1)]
-            return randcords
-        
         # set values of cordinates if no values are given
         if cords[0] == -1:
             cords[0] = math.floor(self.grid_size/2)
         if cords[1] == -1:
             cords[1] = math.floor(self.grid_size/2)
+            
+        if self.add_method.lower() == "normal":
+            
+            # set value of standard deviation
+            if std == -1:
+                std = math.ceil(self.grid_size/2)
+            
+            randcords = [-1, -1]
+            while min(randcords) < 0 or max(randcords) >= self.grid_size:
+                randcords = [int(np.round(np.random.normal(cords[0], std))), int(np.round(np.random.normal(cords[1], std)))]
+                
+            return randcords
+            
+        if self.add_method.lower() == "random":
+            randcords = [np.random.randint(self.grid_size - 1), np.random.randint(self.grid_size - 1)]
+            return randcords
         
         if self.add_method.lower() == "position":
             return cords
-        
-        if self.add_method.lower() == "normal":
-            # set value of standard deviation
-            if std == -1:
-                std = math.ceil(self.grid_size/6)
-            
-            randcords = [max(min(int(np.round(np.random.normal(cords[0], std))), size - 1),0), max(min(int(np.round(np.random.normal(cords[1], std))), size - 1),0)]
-
-            return randcords
 
     def get_neighbours(self, matrix, i, j):
         """
