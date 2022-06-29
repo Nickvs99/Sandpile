@@ -341,12 +341,12 @@ class Sandpile_model:
     def animate_2D(self, ani_func, fargs, color_type='top', cmap='gnuplot', save=False):
         fig = plt.figure()
         ani_func(*(None, False,)+fargs)
-        self.ani = animation.FuncAnimation(fig, ani_func, fargs=(True,)+fargs, frames=range(self.n_steps-2), interval=1, blit=True, repeat=False)
+        self.ani = animation.FuncAnimation(fig, ani_func, fargs=(True,)+fargs, frames=self.n_steps-2, interval=1, blit=True, repeat=False)
         
         if save != False:
             import matplotlib as mpl 
             mpl.rcParams['animation.ffmpeg_path'] = r'C:\\Users\\sande\\Desktop\\ffmpeg\\bin\\ffmpeg.exe'
-            f = f"animation.mp4" 
+            f = f"6_3.mp4" 
             writervideo = animation.FFMpegWriter(fps=60)
             # self.ani.save('2osc.mp4', writer="ffmpeg")
             self.ani.save(f, writer=writervideo)
@@ -377,7 +377,7 @@ class Sandpile_model:
         plt.colorbar(mappable)
         plt.show()
 
-    def plot_slice(self, frame=None, animate=False, show=True, slice_index=None, rot=False, cmap='jet'):
+    def plot_slice(self, frame=None, animate=False, show=True, cmap='jet', slice_index=None, rot=False):
         """
         Plot a slice of the sandpile at "slice_index". If "rot" is True,
         the slice is taken in the z-axis instead of the x-axis.
@@ -404,14 +404,16 @@ class Sandpile_model:
         slice_to_plot = np.ma.masked_where(slice_to_plot == 0, slice_to_plot)
         
         if animate:
-            self.update()
-            self.im.set_array(np.rot90(slice_to_plot))
+            self.im.set_array(np.flipud(np.rot90(slice_to_plot)))
             if self.current_step % 100 == 0:
                 print(f"Step {self.current_step} of {self.n_steps}", end="\r")
+            for _ in range(1):
+                self.update()
             return self.im,
         else:
-            self.im = plt.imshow(np.rot90(slice_to_plot), cmap=cmap, animated=True)
-            plt.colorbar()
+            self.im = plt.imshow(np.flipud(np.rot90(slice_to_plot)), cmap=cmap, animated=True, origin="lower")
+            if self.n_grain_types > 1:
+                plt.colorbar()
             if show:
                 plt.show()
 
@@ -468,13 +470,21 @@ class Sandpile_model:
                 print(f"Step {self.current_step} of {self.n_steps}", end="\r")
 
         if "top" in prop_type:
-            plt.plot(range(len(props_top)), props_top, label=range(len(props_top[0])))
+            plt.plot(range(len(props_top)), props_top, label=[f"Threshold: {self.crit_values[i-1]}" if i > 0 else "Empty cells" for i in range(len(props_top[0]))])
             plt.legend()
+            plt.ylim(bottom=0)
+            plt.xlabel("Steps")
+            plt.ylabel("Proportion")
+            plt.title("Top grains")
             plt.show()
 
         if "total" in prop_type:
-            plt.plot(range(len(props_total)), props_total, label=range(len(props_total[0])))
+            plt.plot(range(len(props_total)), props_total, label=[f"Threshold: {self.crit_values[i]}" for i in range(len(props_total[0]))])
             plt.legend()
+            plt.title("All grains")
+            plt.ylim(bottom=0)
+            plt.xlabel("Steps")
+            plt.ylabel("Proportion")
             plt.show()
 
     def save(self):
@@ -552,7 +562,7 @@ if __name__ == "__main__":
     #         model = Sandpile_model(grid_size=32, n_steps=1000000, crit_values=[grain_treshold1, grain_treshold2], n_grain_types=2, init_method="random", add_method="random")
     #         model.load_or_run()
 
-    model = Sandpile_model(grid_size=20, n_steps=100, crit_values=[4, 10], n_grain_types=2, add_method="position", boundary_con=False, init_method="random")
+    model = Sandpile_model(grid_size=32, n_steps=10000, crit_values=[6,3], n_grain_types=2, add_method="position", boundary_con=False, init_method="random")
     # model.load_or_run()
 
     # model.plot_time_series()
@@ -560,8 +570,8 @@ if __name__ == "__main__":
 
     # todo: voxels, filmpje avalanches, grafiekje proportion over tijd, kleur threshold ipv type, corner 3D
     
-    model.animate_2D(model.plot_2D, (False, "top", "gnuplot"), save=False)
-    # model.animate_2D(model.plot_slice, (False,), save=False)
+    # model.animate_2D(model.plot_2D, (False, "top", "gnuplot"), save=True)
+    model.animate_2D(model.plot_slice, (False, 'brg'), save=True)
     # model.proportions_over_time(("top", "total"))
 
     model.voxel_plot()

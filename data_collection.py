@@ -14,7 +14,8 @@ def get_treshold_research_arguments():
     tresholds = np.arange(1, 11, 1)
 
     for i, grain_treshold1 in enumerate(tresholds):
-
+        if grain_treshold1 != 10:
+            continue
         # Since the results are symmetric not all possibilies need to be tested
         # eg. the tresholds (1, 2) and (2, 1) should give the same results
         for j, grain_treshold2 in enumerate(tresholds[:i + 1]):
@@ -26,7 +27,7 @@ def get_treshold_research_arguments():
                 "crit_values": [grain_treshold1, grain_treshold2],
                 "n_grain_types": 2,
                 "init_method": "random",
-                "add_method": "position"
+                "add_method": "normal"
             })
 
     return arguments
