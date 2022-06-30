@@ -52,8 +52,8 @@ def get_avalance_distribution_research_arguments():
 
 if __name__ == "__main__":
 
-    # arguments = get_treshold_research_arguments()
-    arguments = get_avalance_distribution_research_arguments()
+    arguments = get_treshold_research_arguments()
+    # arguments = get_avalance_distribution_research_arguments()
     # Creates a pool of processes, which will perform the run_and_save_model function for
     # each argument in arguments. The argument is the parameter settings for the model
     pool = mp.Pool()
